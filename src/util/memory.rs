@@ -4,6 +4,7 @@ use crate::util::Address;
 use crate::vm::{Collection, VMBinding};
 use bytemuck::NoUninit;
 use libc::{PROT_EXEC, PROT_NONE, PROT_READ, PROT_WRITE};
+use std::backtrace::{Backtrace, BacktraceStatus};
 use std::io::{Error, Result};
 use sysinfo::MemoryRefreshKind;
 use sysinfo::{RefreshKind, System};
@@ -249,6 +250,8 @@ fn mmap_fixed(
         ptr,
     )?;
 
+    println!("Inside mmap_fixed(): start addr = {}, size = {}", start, size);
+
     #[cfg(all(
         any(target_os = "linux", target_os = "android"),
         not(feature = "no_mmap_annotation")
@@ -261,6 +264,7 @@ fn mmap_fixed(
         // formatted `anno_cstr` being longer than 80 bytes including the trailing `'\0'`.  But
         // since this prctl is used for debugging, we log the error instead of panicking.
         let anno_str = _anno.to_string();
+        println!("ANNOTATION {}\n", anno_str);
         let anno_cstr = std::ffi::CString::new(anno_str).unwrap();
         let result = wrap_libc_call(
             &|| unsafe {
@@ -278,6 +282,9 @@ fn mmap_fixed(
             debug!("Error while calling prctl: {e}");
         }
     }
+
+    let bt = Backtrace::capture();
+    println!("-- backtrace:\n{}", bt);
 
     match strategy.huge_page {
         HugePageSupport::No => Ok(()),
